@@ -1,17 +1,18 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 
 import MoviesList from './components/MoviesList';
 import './App.css';
+import AddMovie from './components/AddMovie';
 
 function App() {
   const [movies, setMovies] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  async function fetchMoviesHandler() {
+  const fetchMoviesHandler = useCallback(async () => {
     setIsLoading(true);
     try {
-      const res = await fetch('https://swapi.dev/api/films/');
+      const res = await fetch(`${process.env.REACT_APP_URL}/movies.json`);
 
       if (!res.ok) {
         throw new Error('something went wrong');
@@ -19,19 +20,37 @@ function App() {
 
       const data = await res.json();
 
-      const transformedMovies = data.results.map((movie) => {
-        return {
-          id: movie.episode_id,
-          title: movie.title,
-          openingText: movie.opening_crawl,
-          releaseDate: movie.release_date
-        };
-      });
-      setMovies(transformedMovies);
+      const loadedMovies = [];
+
+      for (const key in data) {
+        loadedMovies.push({
+          id: key,
+          ...data[key]
+        });
+      }
+      setMovies(loadedMovies);
     } catch (e) {
-      setError(error.message);
+      setError(e.message);
     }
     setIsLoading(false);
+  }, []);
+
+  useEffect(() => {
+    fetchMoviesHandler();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function addMovieHandler(movie) {
+    console.log(movie);
+    const res = await fetch(`${process.env.REACT_APP_URL}/movies.json`, {
+      method: 'POST',
+      body: JSON.stringify(movie),
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+    const data = await res.json();
+    console.log(data);
   }
 
   let content = <p>not found movies</p>;
@@ -50,6 +69,9 @@ function App() {
 
   return (
     <React.Fragment>
+      <section>
+        <AddMovie onAddMovie={addMovieHandler} />
+      </section>
       <section>
         <button onClick={fetchMoviesHandler}>Fetch Movies</button>
       </section>
